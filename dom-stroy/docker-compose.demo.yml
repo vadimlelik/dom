@@ -1,0 +1,21 @@
+# Локальный показ без домена и Nginx:  docker compose -f docker-compose.demo.yml up --build
+# Минск: http://localhost:3000   Города: http://orsha.localhost:3000 , http://brest.localhost:3000 ...
+services:
+  db:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: app, POSTGRES_PASSWORD: demo, POSTGRES_DB: domstroy }
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U app -d domstroy"], interval: 3s, retries: 20 }
+  migrate:
+    build: { context: ., target: migrate }
+    environment: { DATABASE_URL: "postgresql://app:demo@db:5432/domstroy" }
+    depends_on: { db: { condition: service_healthy } }
+    restart: "no"
+  app:
+    build: { context: ., target: runner }
+    ports: ["3000:3000"]
+    environment:
+      DATABASE_URL: "postgresql://app:demo@db:5432/domstroy"
+      ROOT_DOMAIN: localhost
+      SCHEME: http
+      PUBLIC_PORT: "3000"
+    depends_on: { migrate: { condition: service_completed_successfully } }

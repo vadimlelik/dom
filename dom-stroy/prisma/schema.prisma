@@ -1,0 +1,104 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "client"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Material {
+  GAZOBLOK
+  PENOBLOK
+  KERAMZIT
+  KIRPICH
+  BRUS
+  BREVNO
+  KARKAS
+  SIP
+}
+
+model Region {
+  id     Int    @id @default(autoincrement())
+  slug   String @unique
+  name   String
+  cities City[]
+}
+
+model City {
+  id             Int     @id @default(autoincrement())
+  subdomain      String  @unique          // "main" = Минск (корневой домен)
+  isMain         Boolean @default(false)
+  name           String
+  nameLocative   String                   // «в Орше»
+  regionId       Int
+  region         Region  @relation(fields: [regionId], references: [id])
+  lat            Float
+  lng            Float
+  priceCoef      Decimal @default(1)
+  phone          String
+  address        String?
+  intro          String?                  // уникальный текст города
+  yandexRegionId Int?
+  published      Boolean @default(false)  // неопубликованные = 404
+  services       CityService[]
+  portfolio      PortfolioItem[]
+  leads          Lead[]
+}
+
+model Service {
+  id       Int           @id @default(autoincrement())
+  slug     String        @unique
+  title    String
+  summary  String
+  body     String
+  priceFrom Decimal?
+  unit     String?
+  cities   CityService[]
+}
+
+// Локальная версия услуги. Нет записи = страница на субдомене noindex.
+model CityService {
+  cityId    Int
+  serviceId Int
+  city      City    @relation(fields: [cityId], references: [id])
+  service   Service @relation(fields: [serviceId], references: [id])
+  h1        String?
+  body      String
+  priceFrom Decimal?
+  @@id([cityId, serviceId])
+}
+
+model Project {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  title     String
+  material  Material
+  floors    Int
+  area      Decimal
+  priceFrom Decimal
+  images    String[]                 // ключи в MinIO
+}
+
+model PortfolioItem {
+  id         Int      @id @default(autoincrement())
+  slug       String   @unique
+  cityId     Int
+  city       City     @relation(fields: [cityId], references: [id])
+  title      String
+  place      String                  // посёлок / район
+  material   Material
+  foundation String?
+  images     String[]
+}
+
+model Lead {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  name      String
+  phone     String
+  message   String?
+  page      String?
+  cityId    Int?
+  city      City?    @relation(fields: [cityId], references: [id])
+}
